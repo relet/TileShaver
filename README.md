@@ -10,6 +10,7 @@ The tiling scheme should be understood by PolyMaps by default.
 A TFS strategy for OpenLayers is provided in the sweets/ directory. This should complement  
 OpenLayers v.2.12 and possibly beyond. A working build configuration is also included.
 
+```
 usage: python shaver.py host user pass database table geom,id,properties epsg res0 extent zooms destdir
 where:
        host   = database host
@@ -26,5 +27,6 @@ where:
                 currently, if you need to invert any axes, you''ll have to change the script.
        zooms  = minzoom,maxzoom (e.g. 0,5) 
        destdir= base output directory for tile files
+```
 
 An actual config file is next on the todo list.
