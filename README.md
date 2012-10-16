@@ -19,7 +19,7 @@ where:
        table  = table to convert to tiled GeoJSON (full query support pending)
        geom   = name of the geometry column
        id     = name of the id property column
-       properties = other columns to include as property
+       properties = other columns to include as property. Can be written as property=alias to assign aliases.
        epsg   = used projection
        res0   = resolution at minimum zoom level (in units per pixel)
        extent = coordinates for the left,bottom,right,top of the map (e.g. 0,0,90,90)
