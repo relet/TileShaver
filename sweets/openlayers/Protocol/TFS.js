@@ -373,7 +373,7 @@ OpenLayers.Protocol.TFS = OpenLayers.Class(OpenLayers.Protocol, {
 
         resp.priv = OpenLayers.Request.GET({
             url: url,
-            callback: this.createCallback(this.handleResponse, resp, options),
+            callback: this.createCallback(this.handleResponse, resp, options)
         });
 
         return resp;
