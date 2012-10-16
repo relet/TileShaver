@@ -38,6 +38,14 @@ columns = dbcolumns.split(",")
 geom    = columns[0]
 idcol   = len(columns)>1 and columns[1] or None
 props   = columns[1:]
+aliases  = {}
+
+for prop in props:
+  if "=" in prop:
+    key, value = prop.split("=")
+    aliases[key]=value
+  else:
+    aliases[prop]=prop
 
 for z in xrange(minz, maxz+1):
   num = int(pow(2,z))
@@ -52,7 +60,7 @@ for z in xrange(minz, maxz+1):
       bbox = "st_geomfromtext('POLYGON((%s %s, %s %s, %s %s, %s %s, %s %s))', %s)" % (left, bottom, right, bottom, right, top, left, top, left, bottom, epsg)
 
       query =  "select st_asgeojson(st_simplify(st_intersection(%s, %s), %.2f)) as geom" % (geom, bbox, res0/num) # simplify deviations of less than one pixel
-      for p in props:
+      for p in aliases.keys():
         query += ", %s as %s" % (p,p)
       query += " FROM %s" % (dbtable,)
       query += " WHERE st_intersects(%s, %s)" % (geom, bbox)
@@ -75,7 +83,7 @@ for z in xrange(minz, maxz+1):
             if colname == idcol:
               id = col
             else:
-              properties.append({colname: col}) 
+              properties.append({aliases[colname]: col.strip()}) 
         features.append(Feature(geometry=geometry, properties=properties, id=id))
 
       try:
