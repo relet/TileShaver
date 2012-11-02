@@ -18,7 +18,7 @@ where:
 
 try:
   # FIXME this should totalyl go into a config file.
-  noop, dbhost, dbuser, dbpass, dbdb, dbtable, dbcolumns, epsg, res0, extent, zooms, destdir = sys.argv
+  noop, dbhost, dbuser, dbpass, dbdb, dbtable, dbcolumns, epsg, res0, extent, zooms, destdir, clip, simplify = sys.argv
 except:
   print usage
   sys.exit(1)
@@ -40,6 +40,9 @@ idcol   = len(columns)>1 and columns[1] or None
 props   = columns[1:]
 aliases  = {}
 
+clip    = (clip == "clip") and True or None
+simplify= (simplify == "simplify") and True or None
+
 for prop in props:
   if "=" in prop:
     key, value = prop.split("=")
@@ -59,19 +62,39 @@ for z in xrange(minz, maxz+1):
 
       bbox = "st_geomfromtext('POLYGON((%s %s, %s %s, %s %s, %s %s, %s %s))', %s)" % (left, bottom, right, bottom, right, top, left, top, left, bottom, epsg)
 
-      query =  "select st_asgeojson(st_simplify(st_intersection(%s, %s), %.2f)) as geom" % (geom, bbox, res0/num) # simplify deviations of less than one pixel
+      if clip:
+        if simplify: # simplify deviations of less than one pixel and clip to tile boundaries
+          query =  "select st_asgeojson(st_simplify(st_intersection(%s, %s), %.2f)) as geom" % (geom, bbox, res0/num)
+        else:
+          query =  "select st_asgeojson(st_intersection(%s, %s)) as geom" % (geom, bbox) 
+      else:
+        if simplify: # simplify deviations of less than one pixel and clip to tile boundaries
+          query =  "select st_asgeojson(st_simplify(%s, %.2f)) as geom" % (geom, res0/num) 
+        else:
+          query =  "select st_asgeojson(%s) as geom" % (geom) 
       for p in aliases.keys():
         query += ", %s as %s" % (p,p)
       query += " FROM %s" % (dbtable,)
       query += " WHERE st_intersects(%s, %s)" % (geom, bbox)
-      query += " AND st_area(%s) > %i" % (geom, sqr(res0 / num)) # ignore geometries smaller than one pixel 
+      query += " AND st_area(st_envelope(%s)) > %i" % (geom, sqr(res0 / num)) # ignore geometries smaller than one pixel 
+      query += " ORDER BY st_area(%s) DESC" % (geom)
 
-      cur.execute(query)
+      try:
+        cur.execute(query)
+      except db.ProgrammingError, er:
+        print query
+        print er
+        sys.exit(1)
+      except db.InternalError, er:
+        print query
+        print er
+        print geom, bbox
+        sys.exit(1)
       features = []
 
       for row in cur.fetchall():
         geometry = None
-        properties = [] 
+        properties = {} 
         id       = None
         for i,col in enumerate(row):
           if not col:
@@ -83,16 +106,17 @@ for z in xrange(minz, maxz+1):
             if colname == idcol:
               id = col
             else:
-              properties.append({aliases[colname]: col.strip()}) 
+              properties[aliases[colname]]=col.strip()
         features.append(Feature(geometry=geometry, properties=properties, id=id))
 
+      outdata = re.sub("\.\d+","",dumps(FeatureCollection(features), separators=(",",":")))
       try:
-        print ("building %s/%i/%i" % (destdir, z, x))
+        print ("building %s/%i/%i - %.0fK" % (destdir, z, x, len(outdata)/1000.0))
         os.makedirs("%s/%i/%i" % (destdir, z, x))
       except:
         pass
       fd = open("%s/%i/%i/%i.geojson" % (destdir, z, x, y), "w")
-      fd.write( re.sub("\.\d+","",dumps(FeatureCollection(features), separators=(",",":"))) )
+      fd.write( outdata )
       fd.close()
 
 conn.close()
