@@ -106,7 +106,7 @@ for z in xrange(minz, maxz+1):
             if colname == idcol:
               id = col
             else:
-              properties[aliases[colname]]=col.strip()
+              properties[aliases[colname]]=str(col).strip()
         features.append(Feature(geometry=geometry, properties=properties, id=id))
 
       outdata = re.sub("\.\d+","",dumps(FeatureCollection(features), separators=(",",":")))
